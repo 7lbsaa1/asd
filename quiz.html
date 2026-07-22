@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>امتحان كرة القدم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; user-select: none; }
+        /* إخفاء شريط التمرير */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col h-screen overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-900 text-white py-4 px-6 flex justify-between items-center shadow-md">
+        <div class="flex items-center gap-4">
+            <span class="font-bold text-xl">امتحان كرة القدم الشامل</span>
+        </div>
+        <button id="submitExamBtn" class="bg-red-500 hover:bg-red-600 px-6 py-2 rounded-lg font-bold transition">إنهاء الامتحان</button>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden" id="examContainer">
+        <!-- Sidebar (Question Numbers) -->
+        <aside class="w-1/4 bg-white border-l border-gray-200 p-4 overflow-y-auto hidden md:block">
+            <h3 class="font-bold text-lg mb-4 text-center">الأسئلة</h3>
+            <div id="questionGrid" class="grid grid-cols-4 gap-2 mb-8">
+                <!-- أرقام الأسئلة ستولد هنا -->
+            </div>
+            <div class="space-y-2 text-sm text-gray-600">
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gray-200"></span> لم يتم الإجابة</div>
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500"></span> تمت الإجابة</div>
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-600"></span> السؤال الحالي</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 overflow-y-auto bg-slate-50 relative">
+            <div id="questionArea" class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                <!-- محتوى السؤال سيولد هنا -->
+            </div>
+            
+            <div class="max-w-3xl mx-auto mt-6 flex justify-between">
+                <button id="prevBtn" class="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition hidden">السؤال السابق</button>
+                <button id="nextBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition mr-auto">السؤال التالي</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Thank you message (Hidden initially) -->
+    <div id="thankYouMsg" class="hidden h-full flex flex-col items-center justify-center bg-gray-50 w-full absolute top-0 left-0 z-50">
+        <h2 class="text-4xl font-bold text-green-600 mb-4">شكراً لك!</h2>
+        <p class="text-xl text-gray-700">تم تسليم إجاباتك بنجاح.</p>
+        <p class="text-md text-gray-500 mt-2">سيتم مراجعة الإجابات المقالية وستظهر لك النتيجة قريباً عند فتح الإدارة للنتائج.</p>
+    </div>
+
+    <!-- Firebase & Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWTSFTecq2_QeDyg90mM1hPNytwPXYyZ0",
+            authDomain: "admin-37e09.firebaseapp.com",
+            databaseURL: "https://admin-37e09-default-rtdb.firebaseio.com",
+            projectId: "admin-37e09",
+            storageBucket: "admin-37e09.firebasestorage.app",
+            messagingSenderId: "637953105703",
+            appId: "1:637953105703:web:db22cf323186b157de5302",
+            measurementId: "G-GQDLTK8FY6"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // حماية الصفحة (منع الكليك يمين واختصارات المطورين)
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && e.keyCode == 73) || (e.ctrlKey && e.keyCode == 85)) {
+                return false;
+            }
+        };
+
+        // دالة تشفير بسيطة لمنع قراءة الإجابات من الكود المصدري بسهولة
+        const enc = (str) => btoa(encodeURIComponent(str));
+
+        // مصفوفة الأسئلة (تم إضافة نماذج من القائمة، ويمكنك إضافة الباقي بنفس الهيكلة)
+        const questions = [
+            { id: 1, type: "mcq", q: "من فاز بكأس العالم 2022؟", options: ["الأرجنتين", "فرنسا", "البرازيل", "المغرب"], ans: enc("الأرجنتين") },
+            { id: 2, type: "mcq", q: "من أكثر منتخب فاز بكأس العالم؟", options: ["إيطاليا", "البرازيل (5 مرات)", "ألمانيا", "الأرجنتين"], ans: enc("البرازيل (5 مرات)") },
+            { id: 3, type: "mcq", q: "كم عدد لاعبي الفريق داخل الملعب؟", options: ["10 لاعبين", "11 لاعبًا", "12 لاعبًا", "9 لاعبين"], ans: enc("11 لاعبًا") },
+            { id: 4, type: "mcq", q: "من يُلقب بالبرغوث؟", options: ["كريستيانو رونالدو", "نيمار", "ليونيل ميسي", "مبابي"], ans: enc("ليونيل ميسي") },
+            { id: 5, type: "mcq", q: "من يُلقب بالدون؟", options: ["دييغو مارادونا", "ليونيل ميسي", "زين الدين زيدان", "كريستيانو رونالدو"], ans: enc("كريستيانو رونالدو") },
+            // ... (أضف هنا باقي الأسئلة الاختيارية الـ 48) ...
+            { id: 49, type: "essay", q: "من اللاعب في الصورة؟", img: "https://i.pinimg.com/1200x/8e/ab/ff/8eabff954c8269a8f6aff9f17f73d042.jpg" },
+            { id: 50, type: "essay", q: "من اللاعب في الصورة؟", img: "https://i.pinimg.com/736x/8c/f3/ba/8cf3ba26fa543e27a52a4f482b399307.jpg" },
+            { id: 51, type: "essay", q: "اذكر 3 أندية لعب لها هذا اللاعب:", img: "https://i.pinimg.com/736x/09/df/b2/09dfb200196ad33d62a8180d44be88d2.jpg" },
+            { id: 52, type: "essay", q: "كم عدد الأندية التي لعب لها هذا اللاعب؟", img: "https://i.pinimg.com/736x/73/07/5b/73075b484a1de04cadc2fa2b25cb546f.jpg" }
+        ];
+
+        let currentQIndex = 0;
+        let studentAnswers = {};
+        
+        const studentName = localStorage.getItem('studentName');
+        const studentPhone = localStorage.getItem('studentPhone');
+        if(!studentName || !studentPhone) window.location.href = 'index.html';
+
+        // التحقق مما إذا كانت النتيجة منشورة مسبقاً
+        const dbRef = ref(getDatabase());
+        get(child(dbRef, `results/${studentPhone}`)).then((snapshot) => {
+            if (snapshot.exists() && snapshot.val().isPublished) {
+                showFinalResults(snapshot.val());
+            } else {
+                initQuiz();
+            }
+        });
+
+        function initQuiz() {
+            renderGrid();
+            showQuestion(currentQIndex);
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('questionGrid');
+            grid.innerHTML = '';
+            questions.forEach((q, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `w-10 h-10 rounded-full border flex items-center justify-center font-bold text-sm transition ${getGridBtnClass(idx)}`;
+                btn.innerText = idx + 1;
+                btn.onclick = () => { currentQIndex = idx; showQuestion(currentQIndex); };
+                grid.appendChild(btn);
+            });
+        }
+
+        function getGridBtnClass(idx) {
+            if (idx === currentQIndex) return 'bg-blue-600 text-white border-blue-600';
+            if (studentAnswers[questions[idx].id]) return 'bg-green-500 text-white border-green-500';
+            return 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100';
+        }
+
+        function showQuestion(index) {
+            const q = questions[index];
+            const area = document.getElementById('questionArea');
+            let html = `<div class="text-gray-500 text-sm mb-2 font-bold">السؤال ${index + 1} من ${questions.length}</div>`;
+            html += `<h2 class="text-2xl font-bold text-gray-800 mb-6">${q.q}</h2>`;
+            
+            if(q.img) {
+                html += `<img src="${q.img}" class="w-full max-w-md mx-auto rounded-lg shadow-md mb-6" alt="Question Image">`;
+            }
+
+            if (q.type === 'mcq') {
+                html += `<div class="space-y-3">`;
+                q.options.forEach(opt => {
+                    const isSelected = studentAnswers[q.id] === opt;
+                    html += `
+                        <div onclick="selectAnswer('${opt}')" class="cursor-pointer p-4 border-2 rounded-xl transition ${isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}">
+                            <span class="font-medium">${opt}</span>
+                        </div>`;
+                });
+                html += `</div>`;
+            } else {
+                const currentVal = studentAnswers[q.id] || '';
+                html += `<textarea id="essayAns" oninput="saveEssayAns(this.value)" rows="4" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="اكتب إجابتك هنا...">${currentVal}</textarea>`;
+            }
+
+            area.innerHTML = html;
+            
+            document.getElementById('prevBtn').style.display = index === 0 ? 'none' : 'block';
+            document.getElementById('nextBtn').innerText = index === questions.length - 1 ? 'تسليم الامتحان' : 'السؤال التالي';
+            renderGrid();
+        }
+
+        window.selectAnswer = function(ans) {
+            studentAnswers[questions[currentQIndex].id] = ans;
+            showQuestion(currentQIndex);
+        };
+
+        window.saveEssayAns = function(val) {
+            studentAnswers[questions[currentQIndex].id] = val;
+            renderGrid();
+        };
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentQIndex < questions.length - 1) {
+                currentQIndex++;
+                showQuestion(currentQIndex);
+            } else {
+                submitExam();
+            }
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentQIndex > 0) {
+                currentQIndex--;
+                showQuestion(currentQIndex);
+            }
+        });
+
+        document.getElementById('submitExamBtn').addEventListener('click', submitExam);
+
+        function submitExam() {
+            if(!confirm('هل أنت متأكد من رغبتك في تسليم الامتحان؟')) return;
+            
+            let mcqScore = 0;
+            const answersToSave = {};
+
+            questions.forEach(q => {
+                const userAns = studentAnswers[q.id] || '';
+                answersToSave[q.id] = userAns;
+                if (q.type === 'mcq') {
+                    // فك تشفير الإجابة الصحيحة للمقارنة
+                    const correctAns = decodeURIComponent(atob(q.ans));
+                    if (userAns === correctAns) mcqScore++;
+                }
+            });
+
+            const submitData = {
+                name: studentName,
+                phone: studentPhone,
+                answers: answersToSave,
+                mcqScore: mcqScore,
+                totalMcq: questions.filter(q => q.type === 'mcq').length,
+                status: 'pending',
+                timestamp: new Date().toISOString()
+            };
+
+            set(ref(db, 'submissions/' + studentPhone), submitData).then(() => {
+                document.getElementById('examContainer').classList.add('hidden');
+                document.querySelector('header').classList.add('hidden');
+                document.getElementById('thankYouMsg').classList.remove('hidden');
+            });
+        }
+
+        function showFinalResults(data) {
+            // كود عرض النتيجة النهائية للطالب بعد اعتمادها من الأدمن (يمكنك تصميمه لاحقاً)
+            document.body.innerHTML = `<div class="h-screen flex flex-col items-center justify-center bg-gray-50"><h1 class="text-3xl font-bold text-blue-700">نتيجتك هي: ${data.finalScore} / ${questions.length}</h1></div>`;
+        }
+    </script>
+</body>
+</html>
